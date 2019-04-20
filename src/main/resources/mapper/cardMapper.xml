@@ -1,0 +1,1073 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cardMapper">
+	<!-- 查询FTP信息 -->
+	<select id="queryFtpInfo" parameterType="map" resultType="map">
+		SELECT
+			FTP_IP,FTP_USER,
+			FTP_PASSWD,
+			FTP_PORT,
+			FTP_PATH,
+			FTP_BAK_PATH,
+			FTP_FLAG
+		FROM CARDFILE_FTP
+		WHERE FTP_FLAG = '10C'
+	</select>
+
+	<!-- 查询卡秘钥 -->
+	<select id="queryImportKey" parameterType="map" resultType="map">
+		SELECT IMPORT_KEY FROM CARD_SEQ_INFO WHERE CARD_SEQ=#{CARD_SEQ}
+	</select>
+
+
+	<!-- 加载卡批次 -->
+	<select id="queryType" parameterType="map" resultType="map">
+		SELECT
+		CREATECODE,
+		SHEETCODE,
+		STAFFID,
+		DECODE(FLAG,0,'未确认',1,'已确认',2,'已取消')
+		QUERY_TYPE,
+		COUNT(1) COUNT
+		FROM CREATE_CARD_HIS
+		WHERE
+		FLAG=DECODE(#{QUERY_TYPE},'-1',FLAG,'0','0','1','1','2','2')
+		GROUP BY
+		CREATECODE,SHEETCODE,STAFFID,FLAG ORDER BY CREATECODE
+	</select>
+	<!-- 确认生产单查询 -->
+	<select id="queryOrderInfo" parameterType="map" resultType="map">
+		SELECT A.AREAID,
+		A.RANGELIMIT,
+		A.BUSINESSCODE,
+		A.CARDDATE,
+		B.ITEM_NAME,
+		C.LATN_NAME,
+		A.BALANCE/100 BALANCE,
+		A.CARDCOUNTS,
+		D.CARD_SEQ,
+		TO_CHAR(A.EFFDATE, 'YYYY-MM-DD') EFF_DATE,
+		TO_CHAR(A.EXPDATE,
+		'YYYY-MM-DD') EXP_DATE,
+		TO_CHAR(A.RESERVDATE,'YYYY-MM-DD') RESERV_DATE
+		FROM CREATE_CARD_HIS A,CODE_ITEM B,LATN C,CARD_SEQ_INFO D
+		WHERE
+		A.CREATECODE=#{CREATECODE}
+		AND A.FLAG='0'
+		AND A.RANGELIMIT=B.ITEM_CODE
+		AND B.ITEM_TYPE_ID=31
+		AND C.AREA_CODE=A.AREAID
+	</select>
+
+	<!-- 按号段修改卡状态，加载查询表单数据 -->
+	<select id="querySegmentCardForUpdate" parameterType="map"
+		resultType="map">
+		SELECT CARD_NO,
+		D.item_name,
+		E.BUSINESS_NAME,
+		A.BALANCE/100
+		BALANCE,
+		F.BALANCE_TYPE_NAME,
+		C.STATE_NAME,
+		TO_CHAR(B.EXP_DATE,'YYYY-MM-DD') EXP_DATE,
+		TO_CHAR(B.RESERV_DATE,'YYYY-MM-DD') RESERV_DATE
+		FROM CARD_TYPE A,
+		CARD_INFO B,
+		CARD_STATE C,
+		code_item D,
+		BUSINESS_CODE E,
+		BALANCE_TYPE F
+		WHERE A.CARD_TYPE_ID = B.CARD_TYPE_ID
+		AND D.ITEM_TYPE_ID = 31
+		AND
+		B.CARD_NO &gt;= #{begin_card_no}
+		AND B.CARD_NO &lt;= #{end_card_no}
+		AND
+		B.STATE = C.STATE AND A.RANGE_LIMIT = D.ITEM_CODE
+		AND
+		A.BUSINESS_CODE=E.BUSINESS_CODE AND
+		A.BALANCE_TYPE_ID =
+		F.BALANCE_TYPE_ID ORDER BY CARD_NO
+	</select>
+
+	<!-- 加载地区编码下拉值 -->
+	<select id="queryLatn" parameterType="map" resultType="map">
+		SELECT
+		AREA_CODE, LATN_NAME FROM LATN ORDER BY LATN_ID
+	</select>
+
+	<!-- 加载产品类别下拉值 -->
+	<select id="queryProductType" parameterType="map" resultType="map">
+		SELECT BUSINESS_CODE,BUSINESS_NAME FROM BUSINESS_CODE ORDER BY
+		BUSINESS_CODE
+	</select>
+
+	<!-- 加载面值下拉值 -->
+	<select id="queryCardValue" parameterType="map" resultType="map">
+		SELECT AMOUNT_VALUE,AMOUNT_VALUE FROM CARD_AMOUNT ORDER BY AMOUNT_ID
+	</select>
+
+	<!-- 加载单位下拉值 -->
+	<select id="queryUnit" parameterType="map" resultType="map">
+		SELECT
+		ITEM_CODE ,ITEM_NAME FROM CODE_ITEM A,CODE_TYPE B WHERE
+		A.ITEM_TYPE_ID=B.CODE_TYPE_ID AND B.TYPE='UNIT' ORDER BY ITEM_CODE
+	</select>
+
+	<!-- 加载使用范围下拉值 -->
+	<select id="queryUserRange" parameterType="map" resultType="map">
+		SELECT ITEM_CODE,ITEM_NAME FROM CODE_ITEM A,CODE_TYPE B WHERE
+		A.ITEM_TYPE_ID=B.CODE_TYPE_ID AND B.TYPE='CARD_USE_RANGE'
+	</select>
+
+	<!-- 加载品牌类型下拉值 -->
+	<select id="queryBrandType" parameterType="map" resultType="map">
+		SELECT TRADEMARK_ID,TRADEMARK_NAME FROM CARD_TRADEMARK ORDER BY
+		TRADEMARK_ID
+	</select>
+
+	<!-- 加载生产单号下拉值 -->
+	<select id="queryCreatecode" parameterType="map" resultType="map">
+		SELECT DISTINCT(CREATECODE) FROM CREATE_CARD_HIS WHERE FLAG='1'
+	</select>
+	<!-- 加载卡批次号下拉值 -->
+	<select id="queryCardSeq" parameterType="map" resultType="map">
+		SELECT
+		DISTINCT(CARD_SEQ) FROM CARD_SEQ_INFO WHERE CARD_SEQ IS NOT NULL
+	</select>
+
+	<!-- 加载状态下拉值 -->
+	<select id="queryCard_state" parameterType="map" resultType="map">
+		SELECT STATE,STATE_NAME FROM CARD_STATE WHERE STATE!='20E' AND
+		STATE!='20X'
+	</select>
+	<!-- 修改卡状态下拉框 -->
+	<select id="queryCard_state2" parameterType="map" resultType="map">
+		SELECT STATE,STATE_NAME FROM CARD_STATE WHERE STATE!='20E' AND
+		STATE!='20X' AND
+		STATE!='20S'
+	</select>
+	<select id="queryCardTypeInfoByMakeCard" parameterType="map" resultType="map">
+		 SELECT A.CARD_TYPE_ID,
+				A.RANGE_LIMIT,
+				B.BUSINESS_NAME,
+				IFNULL(D.TRADEMARK_NAME, '0') TRADEMARK_NAME,
+				C.AMOUNT_VALUE BALANCE,
+				A.BALANCE_UNIT,
+				A.ADDON_DAYS,
+				A.CARD_TYPE_NAME
+		   FROM CARD_TYPE A, BUSINESS_CODE B, CARD_AMOUNT C, CARD_TRADEMARK D
+		  WHERE A.TRADEMARK_ID = D.TRADEMARK_ID
+			AND A.BALANCE = C.AMOUNT_VALUE
+			AND A.BUSINESS_CODE = B.BUSINESS_CODE
+		  ORDER BY CARD_TYPE_ID
+	</select>
+
+
+	<!-- 查看卡文件、下载卡文件开始 -->
+	<!-- 按条件[时间段、下载状态]查询文件信息 -->
+	<select id="queryAllCardFileData" parameterType="map" resultType="map">
+		SELECT
+			B.CARD_TYPE_NAME CARD_TYPE_NAME,
+			A.CARD_SEQ CARD_SEQ,
+			B.BALANCE / 100 BALANCE,
+			A.CARD_COUNTS CARD_COUNTS,
+			DATE_FORMAT(A.EFF_DATE, '%Y-%m-%d') EFF_DATE,
+			DATE_FORMAT(A.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+			FILE_NAME,
+			A.STAFF_ID EMPEE_ACCT,
+			DATE_FORMAT(A.CREATED_DATE, '%Y-%m-%d') CREATED_DATE,
+			C.STATE_NAME STATES,
+			A.CRM_SYNC
+		FROM
+			CARD_SEQ_INFO A,
+			CARD_TYPE B,
+			CARD_STATE C
+		WHERE
+		<if test="start_date != null and start_date != ''">
+			CREATED_DATE &gt; #{start_date}  AND
+		</if>
+		<if test="end_date != null and end_date != ''">
+			CREATED_DATE &lt; date_add(#{end_date}, interval 1 day) AND
+		</if>
+		<if test="down_state != null and down_state != ''">
+			A.CRM_SYNC = #{down_state} AND
+		</if>
+		<if test="CARD_SEQ != null and CARD_SEQ != ''">
+			A.CARD_SEQ = #{CARD_SEQ} AND
+		</if>
+			A.CARD_TYPE_ID = B.CARD_TYPE_ID AND
+			A.STATE = C.STATE
+		ORDER BY A.CARD_SEQ DESC
+	</select>
+	<!-- 下载卡文件后修改状态 -->
+	<update id="updateDownloadState" parameterType="map">
+		UPDATE
+			CARD_SEQ_INFO
+		SET
+			CRM_SYNC = '1'
+		WHERE
+			CARD_SEQ = #{CARD_SEQ}
+	</update>
+	<!-- 查看卡文件、下载卡文件结束 -->
+
+	<!-- 异常卡记录统计查询、异常卡记录修改查询 开始 -->
+	<select id="queryCardByConditionOne" parameterType="map"
+		resultType="map">
+		SELECT
+		DATE_FORMAT(STAT_DATE,'%Y-%m-%d %T') AS STAT_DATE,
+		A.CARD_SEQ,
+		(CASE A.EXCEPTION_TYPE WHEN '1' THEN'已使用、保留、可用的卡超过保留期' WHEN '2' THEN '可用的卡超过有效期' WHEN '3' THEN '初始的卡超过有效期' ELSE '其他' END) EXCEPTION_TYPE,
+		A.EXCEPTION_RECORD,
+		A.EXCEPTION_AMOUNT
+		FROM
+		CARD_STATE_EXCEPTION_STAT A
+		WHERE
+		<if test="search_condition != null and search_condition != ''">
+			A.OPERATE_TYPE = #{search_condition}
+		</if>
+		<if test="start_date != null and start_date !=''">
+			AND A.STAT_DATE &gt;= #{start_date}
+		</if>
+		<if test="end_date != null and end_date !=''">
+			AND A.STAT_DATE &lt;= DATE_ADD(#{end_date}, INTERVAL 1 DAY)
+		</if>
+		ORDER BY STAT_DATE DESC
+	</select>
+	<!-- 异常卡记录统计查询、异常卡记录修改查询 结束 -->
+	<!-- 异常卡状态统计 开始 -->
+	<!-- 删除已统计的记录 -->
+	<delete id="deleteCountedRecords" parameterType="map">
+		DELETE FROM CARD_STATE_EXCEPTION_STAT WHERE OPERATE_TYPE = '1'
+	</delete>
+	<!-- 按批次号统计已使用、保留、可用状态超过保留期的记录数、总金额记录数-->
+	<select id="countRecordsBySeqAndSituationOne" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+		NOW() > RESERV_DATE
+		AND STATE IN ('20X', '20C', '20E')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- 按批次号记录到异常统计表，对应的exception_type=1，operate_type=1 -->
+	<insert id="insertExceptionRecordBySeqAndSituations" parameterType="map">
+		INSERT INTO CARD_STATE_EXCEPTION_STAT (
+			STATE_EXCEPTION_ID,
+			CARD_SEQ,
+			EXCEPTION_TYPE,
+			EXCEPTION_RECORD,
+			EXCEPTION_AMOUNT,
+			OPERATE_TYPE,
+			STAT_DATE
+		)
+		VALUES
+		<foreach collection="list" item="item" separator=",">
+			(
+				SEQ_STATE_EXCEPTION_ID.NEXTVAL,
+				#{item.CARD_SEQ},
+				#{item.EXCEPTION_TYPE},
+				#{item.EXCEPTION_RECORD},
+				#{item.EXCEPTION_AMOUNT},
+				#{item.OPERATE_TYPE},
+				NOW()
+			)
+		</foreach>
+	</insert>
+	<!-- 按批次号统计初始状态超过有效期的记录数、总金额-->
+	<select id="countRecordsBySeqAndSituationTwo" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+			NOW() > EXP_DATE
+		AND STATE IN ('20U')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- 按批次号记录到异常统计表，对应的exception_type=2，operate_type=1 insertExceptionRecordBySeqAndSituations -->
+	<!-- 按批次号统计可用状态超过有效期的记录数、总金额 -->
+	<select id="countRecordsBySeqAndSituationThree" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+			NOW() > EXP_DATE
+		AND NOW() &lt; RESERV_DATE
+		AND STATE IN ('20C')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- 按批次号记录到异常统计表，对应的exception_type=3，operate_type=1 insertExceptionRecordBySeqAndSituations -->
+	<!-- 异常卡状态统计 结束 -->
+	<!-- 异常卡状态修改 开始 -->
+	<!-- situation one 保留、可用状态超过保留期改为未使用注销 记录数、总金额 -->
+	<select id="updateRecordsBySeqAndSituationOne" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+			NOW() > RESERV_DATE
+		AND STATE IN ('20C', '20E')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- situation one 保留、可用状态超过保留期改为未使用注销 -->
+	<update id="updateCardStateBySeqAndSituationOne" parameterType="map">
+		UPDATE CARD_INFO SET STATE='20P' WHERE STATE IN('20C','20E') AND CARD_SEQ IN
+		<foreach collection="records" separator="," item="item" open="(" close=")">
+			 #{item.CARD_SEQ}
+		</foreach>
+	</update>
+	<!-- situation one 按批次号记录到异常统计表，对应的exception_type=1，operate_type=2 insertExceptionRecordBySeqAndSituations -->
+
+	<!-- situation two 已使用状态超过保留期改为已使用注销 记录数、总金额 -->
+	<select id="updateRecordsBySeqAndSituationTwo" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+			NOW() > RESERV_DATE
+		AND STATE IN ('20X')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- situation two 已使用状态超过保留期改为已使用注销 -->
+	<update id="updateCardStateBySeqAndSituationTwo" parameterType="map">
+		UPDATE CARD_INFO SET STATE='20S' WHERE STATE IN('20X') AND CARD_SEQ IN
+		<foreach collection="records" separator="," item="item" open="(" close=")">
+			#{item.CARD_SEQ}
+		</foreach>
+	</update>
+	<!-- situation two 按批次号记录到异常统计表，对应的exception_type=1，operate_type=2 insertExceptionRecordBySeqAndSituations -->
+
+	<!-- situation three 初始状态超过有效期改为未使用注销 记录数、总金额 -->
+	<select id="updateRecordsBySeqAndSituationThree" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+			NOW() > EXP_DATE
+		AND STATE IN ('20U')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- situation three 初始状态超过有效期改为未使用注销 -->
+	<update id="updateCardStateBySeqAndSituationThree" parameterType="map">
+		UPDATE CARD_INFO SET STATE='20P' WHERE STATE IN('20U') AND CARD_SEQ IN
+		<foreach collection="records" separator="," item="item" open="(" close=")">
+			#{item.CARD_SEQ}
+		</foreach>
+	</update>
+	<!-- situation three 按批次号记录到异常统计表，对应的exception_type=2，operate_type=2 insertExceptionRecordBySeqAndSituations -->
+
+	<!-- situation four 可用状态超过有效期改为保留 记录数、总金额 -->
+	<select id="updateRecordsBySeqAndSituationFour" resultType="map">
+		SELECT
+			A.CARD_SEQ,
+			COUNT(1) EXCEPTION_RECORD,
+			SUM(A.BALANCE) EXCEPTION_AMOUNT
+		FROM
+			CARD_INFO A
+		WHERE
+			NOW() > EXP_DATE
+		AND STATE IN ('20C')
+		GROUP BY CARD_SEQ
+	</select>
+	<!-- situation four 可用状态超过有效期改为保留-->
+	<update id="updateCardStateBySeqAndSituationFour" parameterType="map">
+		UPDATE CARD_INFO SET STATE='20E' WHERE STATE IN('20C') AND CARD_SEQ IN
+		<foreach collection="records" separator="," item="item" open="(" close=")">
+			#{item.CARD_SEQ}
+		</foreach>
+	</update>
+	<!-- situation four 按批次号记录到异常统计表，对应的exception_type=3，operate_type=2 insertExceptionRecordBySeqAndSituations -->
+	<!-- 删除异常统计表所有统计记录-->
+	<delete id="deleteAllRecordsByCountingException" parameterType="map">
+		<if test="OPERATE_TYPE != null and OPERATE_TYPE != ''">
+			DELETE FROM CARD_STATE_EXCEPTION_STAT WHERE OPERATE_TYPE = #{OPERATE_TYPE}
+		</if>
+	</delete>
+
+	<!-- 异常卡状态修改 结束 -->
+
+	<!-- 新增，查询card-info视图，需要精确到具体的card_inof_xxxxx(xxxxx代表卡号前12位)视图 -->
+	<!-- 按号段修改卡状态 -->
+	<!-- 新增兼容老卡服务，操作表card_info_old -->
+	<!-- 校验是否为老卡 -->
+	<select id="verifyIsOldCard" parameterType="map" resultType="map">
+		SELECT COUNT (1) AMOUNT FROM CARD_INFO_OLD WHERE CARD_NO &gt;= #{begin_card_no} AND CARD_NO &lt;= #{end_card_no}
+	</select>
+    <select id="queryOldCardInfoByBalance" parameterType="map" resultType="map">
+        SELECT CARD_NO,BALANCE,STATE
+        FROM CARD_INFO_OLD
+        WHERE CARD_NO = #{CARD_NO}
+    </select>
+	<!-- 加载查询表单数据 -->
+	<select id="querySegmentCardForUpdateByTNum" parameterType="map"
+		resultType="map">
+		SELECT CARD_NO,
+		CONCAT(D.ITEM_NAME,'-',E.BUSINESS_NAME) BUSINESS_NAME,
+		B.BALANCE / 100 BALANCE,
+		B.SOURCE_AMOUNT/100 SOURCE_AMOUNT,
+		F.BALANCE_TYPE_NAME,
+		C.STATE_NAME,
+		DATE_FORMAT(B.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+		DATE_FORMAT(B. RESERV_DATE, '%Y-%m-%d') RESERV_DATE,
+		B.STATE
+		FROM CARD_TYPE              A,
+		CARD_INFO${OLD_CARD_FLAG}              B,
+		CARD_STATE             C,
+		CODE_ITEM              D,
+		BUSINESS_CODE          E,
+		BALANCE_TYPE           F
+		WHERE A.CARD_TYPE_ID = B.CARD_TYPE_ID
+		AND D.ITEM_TYPE_ID = 31
+		AND B.CARD_NO &gt;= #{begin_card_no}
+		AND B.CARD_NO &lt;= #{end_card_no}
+		AND B.STATE = C.STATE
+		AND A.RANGE_LIMIT = D.ITEM_CODE
+		AND A.BUSINESS_CODE = E.BUSINESS_CODE
+		AND A.BALANCE_TYPE_ID = F.BALANCE_TYPE_ID
+		ORDER BY CARD_NO
+	</select>
+
+	<!-- 通过号段查询某状态对应数量 -->
+	<select id="countStatusNumByCardSegment" parameterType="map" resultType="map">
+		SELECT COUNT(1) num
+		FROM CARD_INFO${OLD_CARD_FLAG} A
+		WHERE A.STATE = #{STATE}
+			AND A.CARD_NO &gt;= #{begin_card_no}
+			AND A.CARD_NO &lt;= #{end_card_no}
+		<include refid="update_old_card_state"></include>
+	</select>
+	<!-- 通过号段查询老卡中某状态对应的账本金额总和 -->
+	<select id="sumSourceAmountByCardSegment" parameterType="map" resultType="map">
+		<!-- 返回null时显示为0 -->
+		SELECT sum(SOURCE_AMOUNT) as amount
+		FROM CARD_INFO_OLD A
+		WHERE A.CARD_NO &gt;= #{begin_card_no}
+		AND A.CARD_NO &lt;= #{end_card_no}
+		<if test="STATE != null and STATE != ''">
+			AND A.STATE = #{STATE}
+		</if>
+	</select>
+
+	<!-- 修改卡状态支持老卡[若为老卡，则无须判断卡批次] -->
+	<sql id="update_old_card_state">
+		<if test="is_old_card == null or is_old_card == ''">
+			AND A.CARD_SEQ = SUBSTRING(#{begin_card_no}, 1, 12)
+		</if>
+	</sql>
+	<!-- 按号段修改卡状态，修改卡状态 -->
+	<update id="updateSegmentCardForUpdateByTNum"  parameterType="hashMap">
+		UPDATE CARD_INFO${OLD_CARD_FLAG} A
+		SET A.STATE =#{state_name},
+		A.STATE_DATE = NOW()
+		WHERE
+		A.STATE IN (${OLD_STATE})
+		AND A.CARD_NO &gt;= #{begin_card_no}
+		AND A.CARD_NO &lt;= #{end_card_no}
+		<include refid="update_old_card_state"></include>
+	</update>
+
+	<!-- 按号段修改卡状态，查询总数 -->
+	<select id="queryUpdateStateByTNumFaultNum" parameterType="hashMap" resultType="integer">
+		SELECT
+			COUNT(1) FROM CARD_INFO${OLD_CARD_FLAG} A
+		WHERE
+		 A.CARD_NO &gt;= #{begin_card_no}
+		AND A.CARD_NO &lt;= #{end_card_no}
+		<include refid="update_old_card_state"></include>
+	</select>
+	<!-- 按号段延期卡 star-->
+	  <!-- 修改失效时间 star -->
+		<!-- 修改必须符合 修改前失效时间>=修改后失效时间>=保留时间 AND CARD_SEQ=#{CARD_SEQ} -->
+	<!-- 【兼容老卡】老卡中无批次号 -->
+	<sql id="update_old_card_time">
+		<if test="OLD_CARD_FLAG == null or OLD_CARD_FLAG == ''">
+			AND CARD_SEQ=#{CARD_SEQ}
+		</if>
+	</sql>
+	<sql id="conditionOfQueryModifyExpDateCard">
+		(SELECT CARD_NO FROM
+			(
+			SELECT CARD_NO FROM CARD_INFO${OLD_CARD_FLAG}
+			WHERE
+			STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d') &gt;= DATE_FORMAT(EXP_DATE, '%Y-%m-%d')
+			AND STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d') &lt;= DATE_FORMAT(RESERV_DATE, '%Y-%m-%d')
+			AND CARD_NO &gt;= #{begin_card_no}
+			AND CARD_NO &lt;= #{end_card_no}
+			<include refid="update_old_card_time"></include>
+			)A
+		)
+	</sql>
+	<update id="updateCardExpDateByTNumStateC"  parameterType="hashMap">
+				UPDATE CARD_INFO${OLD_CARD_FLAG}
+				SET EXP_DATE= STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d'),
+				STATE_DATE=NOW()
+				WHERE  CARD_NO IN
+				<include refid="conditionOfQueryModifyExpDateCard"></include>
+				<include refid="update_old_card_time"></include>
+				AND STATE='20C'
+	</update>
+	<update id="updateCardExpDateByTNumStateE"  parameterType="hashMap">
+				UPDATE CARD_INFO${OLD_CARD_FLAG}
+				SET EXP_DATE= STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d'),
+				STATE_DATE=NOW(),
+				STATE='20C'
+				WHERE  CARD_NO IN
+				<include refid="conditionOfQueryModifyExpDateCard"></include>
+				<include refid="update_old_card_time"></include>
+				AND STATE='20E'
+	</update>
+     	<!-- 修改失效时间 end -->
+		<!-- 修改保留时间 star -->
+	<update id="updateCardReservDateByTNumState"  parameterType="hashMap">
+			UPDATE CARD_INFO${OLD_CARD_FLAG}
+			SET RESERV_DATE = STR_TO_DATE(#{RESERV_DATE_NEW}, '%Y%m%d'),
+			 STATE_DATE = NOW()
+			WHERE CARD_NO IN
+			(
+			SELECT CARD_NO FROM
+				(
+					SELECT CARD_NO FROM CARD_INFO${OLD_CARD_FLAG}
+					WHERE
+					STR_TO_DATE(#{RESERV_DATE_NEW},'%Y%m%d') &gt;= DATE_FORMAT(EXP_DATE, '%Y-%m-%d')
+					AND CARD_NO &gt;= #{begin_card_no}
+					AND CARD_NO &lt;= #{end_card_no}
+					<include refid="update_old_card_time"></include>
+				) A
+			  )
+			<include refid="update_old_card_time"></include>
+			AND STATE = '20C'
+			AND RESERV_DATE &lt;= #{RESERV_DATE_NEW}
+	</update>
+		<!-- 修改保留时间 end -->
+		<!-- 同时修改 star -->
+	<update id="updateCardReservDateAndExpDate"  parameterType="hashMap">
+			UPDATE CARD_INFO${OLD_CARD_FLAG}
+			SET RESERV_DATE = STR_TO_DATE(#{RESERV_DATE_NEW}, '%Y%m%d'),
+			 STATE_DATE = NOW(),STATE='20C',EXP_DATE= STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d')
+			WHERE CARD_NO IN
+			(
+			SELECT CARD_NO FROM
+				(
+					SELECT CARD_NO FROM CARD_INFO${OLD_CARD_FLAG}
+					WHERE
+					STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d') &gt;= DATE_FORMAT(EXP_DATE, '%Y-%m-%d')
+					AND STR_TO_DATE(#{EXP_DATE_NEW},'%Y%m%d') &lt;= STR_TO_DATE(#{RESERV_DATE_NEW},'%Y%m%d')
+					AND CARD_NO &gt;= #{begin_card_no}
+					AND CARD_NO &lt;= #{end_card_no}
+					<include refid="update_old_card_time"></include>
+				) A
+			  )
+			<include refid="update_old_card_time"></include>
+			AND STATE in ('20C','20E')
+	</update>
+		<!-- 同时修改 end -->
+	<!-- 按号段延期卡 end-->
+
+
+	<!-- 卡批次查询开始 -->
+	<!-- 根据批次查询 -->
+	<select id="queryCardInfoByParams" parameterType="map" resultType="map">
+
+		SELECT
+			B.CARD_SEQ,
+			B.CARD_COUNTS,
+			DATE_FORMAT(B.EFF_DATE, '%Y-%m-%d') AS EFF_DATE,
+			DATE_FORMAT(B.EXP_DATE, '%Y-%m-%d') AS EXP_DATE,
+			DATE_FORMAT(B.CREATED_DATE,'%Y-%m-%d %H:%i:%s') AS CREATED_DATE,
+			DATE_FORMAT(B.RESERV_DATE, '%Y-%m-%d') AS RESERV_DATE
+		FROM
+			CARD_SEQ_INFO B
+		<where>
+			<if test="CARD_SEQ != null and CARD_SEQ != ''">
+				B.CARD_SEQ=#{CARD_SEQ}
+			</if>
+			<if test="start_date != null and start_date != ''">
+				AND B.CREATED_DATE >= #{start_date}
+			</if>
+			<if test="end_date != null and end_date != ''">
+				AND B.CREATED_DATE &lt; date_add(#{end_date}, interval 1 day)
+			</if>
+		</where>
+	</select>
+	<!-- 卡批次查询-卡批次查询card_info表-->
+	<select id="queryCardInfoByCardSeq" parameterType="map" resultType="map">
+		SELECT CARD_NO,B.CARD_SEQ,
+		CONCAT(D.ITEM_NAME,'-',E.BUSINESS_NAME) BUSINESS_NAME,
+		B.BALANCE / 100 BALANCE,
+		B.SOURCE_AMOUNT/100 SOURCE_AMOUNT,
+		F.BALANCE_TYPE_NAME,
+		C.STATE_NAME,
+		DATE_FORMAT(B.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+		DATE_FORMAT(B. RESERV_DATE, '%Y-%m-%d') RESERV_DATE
+		FROM CARD_TYPE              A,
+		CARD_INFO              B,
+		CARD_STATE             C,
+		CODE_ITEM              D,
+		BUSINESS_CODE          E,
+		BALANCE_TYPE           F
+		WHERE A.CARD_TYPE_ID = B.CARD_TYPE_ID
+		AND D.ITEM_TYPE_ID = 31
+		AND B.CARD_SEQ  = #{CARD_SEQ}
+		AND B.STATE = C.STATE
+		AND A.RANGE_LIMIT = D.ITEM_CODE
+		AND A.BUSINESS_CODE = E.BUSINESS_CODE
+		AND A.BALANCE_TYPE_ID = F.BALANCE_TYPE_ID
+		ORDER BY CARD_NO
+	</select>
+	<!-- 卡批次查询结束 -->
+	<!-- 通过批次查询卡原始金额 -->
+	<select id="queryBalanceByCardSeq" parameterType="map" resultType="map">
+		SELECT A.BALANCE SOURCE_AMOUNT
+		FROM CARD_TYPE  A,
+		CARD_SEQ_INFO  B
+		WHERE B.CARD_TYPE_ID = A.CARD_TYPE_ID
+		AND B.CARD_SEQ=#{CARD_SEQ}
+	</select>
+	<!-- 通过批次查询某状态对应数量 -->
+	<select id="countStatusNumByCardSeq" parameterType="map" resultType="map">
+		SELECT COUNT(1) num
+		FROM CARD_INFO A
+		WHERE A.CARD_SEQ = #{CARD_SEQ}
+			AND A.STATE = #{STATE}
+	</select>
+	<!-- 按卡批次更新状态开始 -->
+	<!-- 按卡批次号更新状态并返回成功记录数 -->
+	<update id="updateCardInfoByParams" parameterType="map">
+		UPDATE
+			CARD_INFO A
+		SET
+			A.STATE = #{state_name},
+			A.STATE_DATE = now( )
+		WHERE
+			A.STATE IN ${validEdit}
+			AND A.CARD_SEQ = #{seq_id}
+	</update>
+
+	<!-- 统计更新失败记录数 -->
+	<select id="countUpdateFailByCardSeq" parameterType="map" resultType="map">
+		SELECT
+			COUNT(1) num
+		FROM
+			CARD_INFO A
+		WHERE
+			A.CARD_SEQ = #{seq_id}
+			AND A.STATE NOT IN
+				(#{state_name})<!--('20C')-->
+	</select>
+	<!-- 按卡批次更新状态结束 -->
+
+	<!-- 按批次，逐条延长卡时间开始 -->
+	<!-- 按卡批次查询待修改卡 -->
+	<select id="queryModifyingCardByCardSeq" parameterType="map" resultType="map">
+		SELECT
+			CARD_NO,
+			STATE,
+			EXP_DATE,
+			RESERV_DATE,
+			STATE_DATE,
+			CARD_SEQ
+		FROM
+			card_info
+		WHERE
+			CARD_SEQ = #{seq_id}
+	</select>
+	<!-- 逐条延长失效时间 针对20C -->
+	<update id="updateExpiryDateByBatchForC" parameterType="list">
+			UPDATE
+				CARD_INFO
+			SET
+				EXP_DATE =
+				<foreach collection="list" item="card" index="index" >
+						<if test="index == 0">
+							#{card.expDate},
+						</if>
+				</foreach>
+				STATE_DATE = NOW()
+			WHERE
+				CARD_NO in
+					<foreach collection="list" item="card" open="(" close=")" separator=",">
+						#{card.CARD_NO}
+					</foreach>
+			AND CARD_SEQ =
+				<foreach collection="list" item="card" index="index" >
+					<if test="index == 0">
+						#{card.CARD_SEQ}
+					</if>
+				</foreach>
+			AND STATE = '20C'
+	</update>
+	<!-- 逐条延长失效时间 针对20E -->
+	<update id="updateExpiryDateByBatchForE" parameterType="list">
+		UPDATE
+			CARD_INFO
+		SET
+			EXP_DATE =
+				<foreach collection="list" item="card" index="index" >
+					<if test="index == 0">
+						#{card.expDate},
+					</if>
+				</foreach>
+			STATE_DATE = NOW(),
+			STATE = '20C'
+		WHERE
+			CARD_NO  in
+			<foreach collection="list" item="card" open="(" close=")" separator=",">
+				#{card.CARD_NO}
+			</foreach>
+		AND CARD_SEQ =
+			<foreach collection="list" item="card" index="index" >
+				<if test="index == 0">
+					#{card.CARD_SEQ}
+				</if>
+			</foreach>
+		AND STATE = '20E'
+	</update>
+	<!-- 逐条修改保留时间 -->
+	<update id="updateReserveDateByBatchForC" parameterType="list">
+		  UPDATE
+			CARD_INFO
+		  SET
+			RESERV_DATE =
+				<foreach collection="list" item="card" index="index" >
+					<if test="index == 0">
+						#{card.reserveDate},
+					</if>
+				</foreach>
+			STATE_DATE = NOW()
+		  WHERE
+				CARD_NO in
+				<foreach collection="list" item="card" open="(" close=")" separator=",">
+					#{card.CARD_NO}
+				</foreach>
+		  AND CARD_SEQ =
+				<foreach collection="list" item="card" index="index" >
+					<if test="index == 0">
+						#{card.CARD_SEQ}
+					</if>
+				</foreach>
+		  AND STATE = '20C'
+		<foreach collection="list" item="card" index="index" >
+			<if test="index == 0">
+				AND RESERV_DATE &lt;= #{card.reserveDate}
+				AND EXP_DATE &lt;= #{card.reserveDate}
+			</if>
+		</foreach>
+	</update>
+	<!-- 按批次，逐条延长卡时间结束 -->
+	<!-- 单卡解锁锁定 star-->
+	<!-- 单卡查询 -->
+	<select id="queryOneCardForUnlockCard" parameterType="map" resultType="map">
+			SELECT
+				CARD_NO,
+				CONCAT(D.item_name,'-',E.BUSINESS_NAME) BUSINESS_NAME,
+				A.BALANCE / 100 BALANCE,
+				F.BALANCE_TYPE_NAME,
+				C.STATE_NAME,
+				B.STATE,
+				date_format(B.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+				date_format(B.RESERV_DATE, '%Y-%m-%d') RESERV_DATE
+			FROM
+				CARD_TYPE A,
+				CARD_INFO B,
+				CARD_STATE C,
+				code_item D,
+				BUSINESS_CODE E,
+				BALANCE_TYPE F
+			WHERE
+				A.CARD_TYPE_ID = B.CARD_TYPE_ID
+			AND D.ITEM_TYPE_ID = 31
+			AND B.CARD_NO = #{CARD_NO}
+			AND B.CARD_SEQ = SUBSTRING(#{CARD_NO},1,12)
+			AND B.STATE = C.STATE
+			AND A.RANGE_LIMIT = D.ITEM_CODE
+			AND A.BUSINESS_CODE = E.BUSINESS_CODE
+			AND A.BALANCE_TYPE_ID = F.BALANCE_TYPE_ID
+	</select>
+	<!-- 查询卡状态 -->
+	<select id="queryStateForUnlock" parameterType="map" resultType="map">
+		SELECT CARD_NO,STATE
+		FROM CARD_INFO
+		WHERE CARD_NO = #{CARD_NO}
+		AND CARD_SEQ = SUBSTRING(#{CARD_NO},1,12)
+	</select>
+	<!-- 修改卡状态 -->
+	<update id="updateCardStateForUnlockCard" parameterType="map">
+		UPDATE CARD_INFO A
+		SET A.STATE=#{NEW_STATE},A.STATE_DATE=NOW()
+		WHERE A.CARD_NO=#{CARD_NO}
+		AND A.CARD_SEQ=SUBSTRING(#{CARD_NO},1,12)
+	</update>
+	<!-- 锁定和可用状态查询 -->
+	<select id="queryCard_state_ForUnlock" parameterType="map" resultType="map">
+		SELECT STATE,STATE_NAME
+		FROM CARD_STATE
+		WHERE STATE = '20F'
+		OR STATE = '20C'
+	</select>
+	<!-- 单卡解锁锁定 end-->
+
+	<!-- 返充值卡金额 star-->
+	<!-- 查询卡信息-->
+	<select id="queryCardInfoForEditCardBalance" parameterType="map" resultType="map">
+		SELECT
+		A.CARD_NO,
+		(A.BALANCE / 100) BALANCE,
+		A.STATE_NAME,
+		A.TRADEMARK_NAME,
+		F.CARD_SEQ,
+		D.LATN_NAME,
+		DATE_FORMAT(F.EFF_DATE, '%Y-%m-%d') EFF_DATE,
+		DATE_FORMAT(A.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+		F.PROLONG_DAYS,
+		DATE_FORMAT(F.RESERV_DATE, '%Y-%m-%d') RESERV_DATE
+		FROM
+		(
+		SELECT
+		A.CARD_NO,
+		A.BALANCE,
+		A.EXP_DATE,
+		B.STATE_NAME,
+		E.TRADEMARK_NAME,
+		A.CARD_SEQ
+		FROM CARD_INFO A
+		LEFT JOIN CARD_STATE B ON A.STATE = B.STATE
+		LEFT JOIN CARD_TYPE C ON A.CARD_TYPE_ID = C.CARD_TYPE_ID
+		LEFT JOIN CARD_TRADEMARK E ON C.TRADEMARK_ID = E.TRADEMARK_ID
+		WHERE A.CARD_NO = #{CARD_NO}
+		AND A.CARD_SEQ = SUBSTR(#{CARD_NO}, 1, 12)
+		) A
+		LEFT JOIN CARD_SEQ_INFO F ON A.CARD_SEQ = F.CARD_SEQ
+		LEFT JOIN LATN D ON F.AREA_CODE = D.AREA_CODE
+		WHERE F.CARD_SEQ = SUBSTR(#{CARD_NO}, 1, 12)
+	</select>
+    <select id="queryCardInfoForEditCardBalanceOldCard" parameterType="map" resultType="map">
+      		SELECT
+		 A.CARD_NO,
+		(A.BALANCE / 100) BALANCE,
+		DATE_FORMAT(A.EFF_DATE, '%Y-%m-%d') EFF_DATE,
+		DATE_FORMAT(A.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+		datediff(A.RESERV_DATE,A.EXP_DATE) PROLONG_DAYS,
+		DATE_FORMAT(A.RESERV_DATE, '%Y-%m-%d') RESERV_DATE,
+		'OLD' CARD_SEQ,
+		'' LATN_NAME,
+        B.STATE_NAME,
+		E.TRADEMARK_NAME
+		FROM card_info_old A
+		LEFT JOIN CARD_STATE B ON A.STATE = B.STATE
+		LEFT JOIN CARD_TYPE C ON A.CARD_TYPE_ID = C.CARD_TYPE_ID
+		LEFT JOIN CARD_TRADEMARK E ON C.TRADEMARK_ID = E.TRADEMARK_ID
+		WHERE A.CARD_NO = #{CARD_NO}
+    </select>
+    <!-- 充值记录查询 -->
+	<select id="queryRecLogForEditBalance" parameterType="map" resultType="map">
+		SELECT  CARD_NO,RECHARGE_LOG_ID
+		FROM
+		(
+		<foreach collection="list" item="item" separator="UNION ALL" index="index">
+			SELECT CARD_NO,RECHARGE_LOG_ID FROM RECHARGE_LOG_${item.indexDay} WHERE CARD_NO = #{item.CARD_NO}
+			AND  STATE in ('0','2')
+		</foreach>
+		) AS TT
+	</select>
+	<!-- 销账记录查询 -->
+	<select id="queryAgentRecLogForEditBalance" parameterType="map" resultType="map">
+		SELECT  CARD_NO
+		FROM
+		(
+		<foreach collection="list" item="item" separator="UNION ALL" index="index">
+			SELECT CARD_NO FROM tb_agent_card_recharge_log_${item.indexDay} where CARD_NO = #{item.CARD_NO}
+			AND  STATE = '0'
+		</foreach>
+		) AS TT
+	</select>
+	<!-- 扣款0,1,2 互转3 记录查询 -->
+	<select id="queryTransLogForEditBalance" parameterType="map" resultType="map">
+		SELECT  CARD_NO
+		FROM
+		(
+		<foreach collection="list" item="item" separator="UNION ALL" index="index">
+			SELECT OLD_CARD_NO CARD_NO FROM card_transfer_log_${item.indexDay} where OLD_CARD_NO = #{item.CARD_NO}
+			AND OPERATION_CODE in  (0,1,3)
+			AND STATE = '0'
+		</foreach>
+		) AS TT
+	</select>
+	<!-- 修改余额,ADJ_BALANCE(调整金额，不是调整后金额) -->
+	<update id="updateCardBalanceForEditBalance" parameterType="map">
+		UPDATE CARD_INFO
+		SET BALANCE = BALANCE + CAST(#{ADJ_BALANCE} AS SIGNED),STATE = #{STATE}
+		WHERE CARD_NO = #{CARD_NO}
+		AND CARD_SEQ = SUBSTR(#{CARD_NO}, 1, 12)
+	</update>
+	<update id="updateCardBalanceForEditBalanceOldCard" parameterType="map">
+		UPDATE CARD_INFO_OLD
+		SET BALANCE = BALANCE + CAST(#{ADJ_BALANCE} AS SIGNED),STATE = #{STATE}
+		WHERE CARD_NO = #{CARD_NO}
+	</update>
+	<!-- 记录日志 -->
+	<insert id="insertCardTransLogForEditBalance" parameterType="map">
+		INSERT INTO CARD_TRANSFER_LOG_${REQ_DAY} (
+		TRANSFER_LOG_ID,
+		REQUEST_ID,
+		REQUEST_TIME,
+		TRANS_AMOUNT,
+		RECHARGE_UNIT,
+		OLD_CARD_NO,
+		NEW_CARD_NO,
+		RESULT,
+		OPT_DATE,
+		OPERATION_CODE,
+		EMPEE_ID
+		)
+		VALUES
+		(
+		SEQ_TRANSFER_LOG_ID.NEXTVAL,
+		#{REQUEST_ID},
+		#{REQUEST_TIME},
+		#{TRANS_AMOUNT,jdbcType=VARCHAR},
+		1,
+		#{OLD_CARD_NO,jdbcType=VARCHAR},
+		#{OLD_CARD_NO,jdbcType=VARCHAR},
+		#{RESULT,jdbcType=INTEGER},
+		SYSDATE(),
+		'4',
+		#{EMPEE_ID}
+		)
+	</insert>
+	<!-- 返充值卡金额 end-->
+
+
+	<!-- 单卡解锁锁定(旧卡) star-->
+	<!-- 单卡查询(旧卡) -->
+	<select id="queryCountOldOneCardForUnlockCard" parameterType="map" resultType="map">
+		SELECT
+		count(*) SUM
+		FROM
+		CARD_TYPE A,
+		CARD_INFO_OLD B,
+		CARD_STATE C,
+		code_item D,
+		BUSINESS_CODE E,
+		BALANCE_TYPE F
+		WHERE
+		A.CARD_TYPE_ID = B.CARD_TYPE_ID
+		AND D.ITEM_TYPE_ID = 31
+		AND B.CARD_NO = #{CARD_NO}
+		AND B.STATE = C.STATE
+		AND A.RANGE_LIMIT = D.ITEM_CODE
+		AND A.BUSINESS_CODE = E.BUSINESS_CODE
+		AND A.BALANCE_TYPE_ID = F.BALANCE_TYPE_ID
+	</select>
+	<!-- 单卡查询(旧卡) -->
+	<select id="queryOldOneCardForUnlockCard" parameterType="map" resultType="map">
+		SELECT
+		CARD_NO,
+		CONCAT(D.item_name,'-',E.BUSINESS_NAME) BUSINESS_NAME,
+		A.BALANCE / 100 BALANCE,
+		F.BALANCE_TYPE_NAME,
+		C.STATE_NAME,
+		B.STATE,
+		date_format(B.EXP_DATE, '%Y-%m-%d') EXP_DATE,
+		date_format(B.RESERV_DATE, '%Y-%m-%d') RESERV_DATE
+		FROM
+		CARD_TYPE A,
+		CARD_INFO_OLD B,
+		CARD_STATE C,
+		code_item D,
+		BUSINESS_CODE E,
+		BALANCE_TYPE F
+		WHERE
+		A.CARD_TYPE_ID = B.CARD_TYPE_ID
+		AND D.ITEM_TYPE_ID = 31
+		AND B.CARD_NO = #{CARD_NO}
+		AND B.STATE = C.STATE
+		AND A.RANGE_LIMIT = D.ITEM_CODE
+		AND A.BUSINESS_CODE = E.BUSINESS_CODE
+		AND A.BALANCE_TYPE_ID = F.BALANCE_TYPE_ID
+	</select>
+	<!-- 查询卡状态(旧卡) -->
+	<select id="queryOldStateForUnlock" parameterType="map" resultType="map">
+		SELECT CARD_NO,STATE
+		FROM CARD_INFO_OLD
+		WHERE CARD_NO = #{CARD_NO}
+	</select>
+	<!-- 修改卡状态(旧卡) -->
+	<update id="updateOldCardStateForUnlockCard" parameterType="map">
+		UPDATE CARD_INFO_OLD A
+		SET A.STATE=#{NEW_STATE},A.STATE_DATE=NOW()
+		WHERE A.CARD_NO=#{CARD_NO}
+	</update>
+	<!-- 单卡解锁锁定 (旧卡)end-->
+
+    <!-- 单卡查询star -->
+    <select id="queryOneNewCard" parameterType="map" resultType="map">
+        SELECT
+            CARD_NO,
+            BALANCE,
+            CARD_TYPE_ID,
+            STATE,
+            DATE_FORMAT(EXP_DATE, '%Y-%m-%d') EXP_DATE,
+            DATE_FORMAT(RESERV_DATE, '%Y-%m-%d') RESERV_DATE,
+            DATE_FORMAT(STATE_DATE, '%Y-%m-%d %H:%i:%s') STATE_DATE,
+            SOURCE_AMOUNT,
+            CARD_SEQ
+        FROM
+            CARD_INFO
+        WHERE CARD_NO = #{CARD_NO}
+    </select>
+    <select id="queryOneOldCard" parameterType="map" resultType="map">
+        SELECT
+            CARD_NO,
+            BALANCE,
+            CARD_TYPE_ID,
+            STATE,
+            DATE_FORMAT(EXP_DATE, '%Y-%m-%d') EXP_DATE,
+            DATE_FORMAT(RESERV_DATE, '%Y-%m-%d') RESERV_DATE,
+            DATE_FORMAT(STATE_DATE, '%Y-%m-%d %H:%i:%s') STATE_DATE,
+            SOURCE_AMOUNT
+        FROM
+            CARD_INFO_OLD
+        WHERE CARD_NO = #{CARD_NO}
+    </select>
+    <!-- 单卡查询end -->
+
+    <!-- 单卡延期star 保留期和有效期 = 当前时间 + 传过来的天数 -->
+    <update id="updateDelayOneNewCard"  parameterType="map">
+        UPDATE card_info
+        SET
+            STATE = '20C',
+            RESERV_DATE = date_add(now(), interval #{DELAY_DAY} day),
+            EXP_DATE = DATE_ADD(now(),interval #{DELAY_DAY} day)
+        where CARD_NO = #{CARD_NO}
+        	AND STATE in ('20C','20E')
+    </update>
+    <update id="updateDelayOneOldCard"  parameterType="map">
+        UPDATE card_info_old
+        SET
+        	STATE = '20C',
+            RESERV_DATE = date_add(now(), interval #{DELAY_DAY} day),
+            EXP_DATE = DATE_ADD(now(),interval #{DELAY_DAY} day)
+        where CARD_NO = #{CARD_NO}
+			AND STATE in ('20C','20E')
+    </update>
+    <!-- 单卡延期end -->
+
+</mapper>
